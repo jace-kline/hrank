@@ -1,4 +1,5 @@
 import Data.Array
+import Data.List (nub, elemIndex)
 
 type Row = Int
 type Col = Int
@@ -23,42 +24,17 @@ rotate r arr = ixmap ((1,1),(m,n)) rotater arr
         shift (i,j) = r `mod` (len (i,j))
         rotater (i,j) = clockwise (i,j) (shift (i,j))
         clockwise :: (Row,Col) -> Offset -> (Row,Col)
-        clockwise (i,j) x | (x == 0 || point (i,j)) = (i,j)
-                          | toppoint (i,j) = (i + x - 1, j)
-                          | rightpoint (i,j) = (i, j - x + 1)
-                          | top (i,j) = 
-                              let j' = j + x
-                              in if j' <= n - l 
-                                  then (i,j')
-                                  else clockwise (i,n-l) (x-(n-l-j))
-                          | right (i,j) =
-                              let i' = i + x
-                              in if i' <= m - l
-                                  then (i',j)
-                                  else clockwise (m-l,j) (x-(m-l-i))
-                          | bottom (i,j) =
-                              let j' = j - x
-                              in if j' >= l + 1 
-                                  then (i,j')
-                                  else clockwise (i,l+1) (x-(j-l-1))
-                          | left (i,j) =
-                              let i' = i - x
-                              in if i' >= l + 1
-                                  then (i',j)
-                                  else clockwise (l+1,j) (x-(i-l-1))
-                          | otherwise = error "Invalid point condition"
-                          where l = layer (i,j)
-        point (i,j) = top' (i,j) && left' (i,j) && bottom' (i,j) && right' (i,j)
-        toppoint (i,j) = top' (i,j) && left' (i,j) && not (bottom' (i,j)) && right' (i,j)
-        rightpoint (i,j) = top' (i,j) && not (left' (i,j)) && bottom' (i,j) && right' (i,j)
-        top (i,j) = top' (i,j) && not (right' (i,j))
-        right (i,j) = right' (i,j) && not (bottom' (i,j))
-        bottom (i,j) = bottom' (i,j) && not (left' (i,j))
-        left (i,j) = left' (i,j) && not (top' (i,j))
-        top' (i,j) = i == layer (i,j) + 1
-        right' (i,j) = j == n - layer (i,j)
-        bottom' (i,j) = i == m - layer (i,j)
-        left' (i,j) = j == layer (i,j) + 1
+        clockwise (i,j) x = cycle !! ((index + x) `mod` (len (i,j)))
+            where
+                l = layer (i,j)
+                cycle = nub $ top ++ right ++ bottom ++ left
+                index = case elemIndex (i,j) cycle of
+                    Nothing -> error "Index not found"
+                    (Just i) -> i
+                top = zip (repeat (l+1)) [(l+1)..(n-l)]
+                right = zip [(l+1)..(m-l)] (repeat (n-l))
+                bottom = zip (repeat (m-l)) (reverse [(l+1)..(n-1)])
+                left = zip (reverse [(l+1)..(m-l)]) (repeat (l+1))
 
 toLists :: Array (Row,Col) a -> [[a]]
 toLists arr = splitAfter n $ map (arr !) $ range (bounds arr)
